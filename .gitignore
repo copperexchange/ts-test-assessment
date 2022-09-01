@@ -1,0 +1,16 @@
+**/*
+!config/**
+!**/*.ts
+**/*.d.ts
+!README.md
+!.editorconfig
+!.eslintignore
+!.eslintrc
+!.npmignore
+!.npmrc
+!manifest.yml
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.decorators.json
+!.github
