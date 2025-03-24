@@ -1,11 +1,13 @@
 **/*
+!config
 !config/**
 !**/*.ts
+!test
+!test/**
 **/*.d.ts
 !README.md
 !.editorconfig
-!.eslintignore
-!.eslintrc
+!jest.config.js
 !.npmignore
 !.npmrc
 !manifest.yml
