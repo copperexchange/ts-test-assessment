@@ -1,8 +1,8 @@
-import { autoInjectable } from 'tsyringe';
+import { injectable } from 'tsyringe';
 import TestRepository from '../storage/testRepository';
 import Test from '../datamodel/test';
 
-@autoInjectable()
+@injectable()
 export default class TestService {
   constructor(
     private testRepository: TestRepository,
@@ -10,5 +10,9 @@ export default class TestService {
 
   async getInfo(): Promise<Test> {
     return this.testRepository.getById('1');
+  }
+
+  async insertMany(data: Test[]): Promise<Test[]> {
+    return this.testRepository.insertMany(data);
   }
 }

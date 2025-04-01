@@ -1,8 +1,7 @@
-import { autoInjectable, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import TestService from '../services/testService';
 import { Request, Response, Router } from 'express';
 
-@autoInjectable()
 @singleton()
 export default class TestRoutes {
   constructor(

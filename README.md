@@ -2,7 +2,7 @@
 
 Installation requirements:
 
-* NodeJs ver. 16
+* NodeJs ver. 22
 * Docker (for the postgres container)
 
 Run the postgres container with the use of the Makefile `make run-postgres`.

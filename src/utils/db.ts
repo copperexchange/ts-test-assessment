@@ -1,30 +1,32 @@
 import { singleton } from 'tsyringe';
 import { instanceToPlain, plainToInstance, ClassConstructor } from 'class-transformer';
-import { IConfig } from 'config';
+import config, { IConfig } from 'config';
 import format from 'pg-format';
-import config from 'config';
+import { ClientBase, Pool } from 'pg';
+import camelcaseKeys from 'camelcase-keys';
+import { pg as parameterize } from 'yesql';
 
-const { Pool } = require('pg');
-const pgNamed = require('node-postgres-named');
-const camelcaseKeys = require('camelcase-keys');
+type DbClient = ClientBase | Pool;
 
-function singleQuery<T>(client: any, query: string, mapper: ClassConstructor<T>, params?: { [key: string]: any }): Promise<T[]> {
-  return client.query(query, instanceToPlain(params)).then((res: any) => {
-    if (typeof res.rows !== 'undefined') {
-      return camelcaseKeys(res.rows).map((row: any) => plainToInstance(mapper, row));
-    }
-    return res;
-  });
+async function singleQuery<T>(client: DbClient, query: string, mapper: ClassConstructor<T>, params?: { [key: string]: any }): Promise<T[]> {
+  const result = await client.query(parameterize(query)(instanceToPlain(params)));
+
+  if (typeof result.rows !== 'undefined') {
+    return camelcaseKeys(result.rows).map((row: any) => plainToInstance(mapper, row));
+  }
+
+  return result.rows;
 }
 
-function bulkQuery<T>(client: any, query: string, mapper: ClassConstructor<T>, params?: any[]): Promise<T[]> {
+async function bulkQuery<T>(client: DbClient, query: string, mapper: ClassConstructor<T>, params?: any[]): Promise<T[]> {
   if ((params?.length ?? 0) !== 0) {
-    return client.query(format(query, params)).then((res: any) => {
-      if (typeof res.rows !== 'undefined') {
-        return camelcaseKeys(res.rows).map((row: any) => plainToInstance(mapper, row));
-      }
-      return res;
-    });
+    const result = await client.query(format(query, params));
+
+    if (typeof result.rows !== 'undefined') {
+      return camelcaseKeys(result.rows).map((row: any) => plainToInstance(mapper, row));
+    }
+
+    return result.rows;
   }
 
   return Promise.resolve([]);
@@ -32,7 +34,7 @@ function bulkQuery<T>(client: any, query: string, mapper: ClassConstructor<T>, p
 
 @singleton()
 export class Db {
-  private readonly db: any;
+  private readonly db: Pool;
 
   constructor() {
     const options = config.get<IConfig>('db');
@@ -42,11 +44,10 @@ export class Db {
       host: options.get<string>('host'),
       database: options.get<string>('database'),
       password: options.get<string>('password'),
-      port: options.get<string>('port'),
+      port: options.get<number>('port'),
       max: options.get<number>('maxActive'),
       connectionTimeoutMillis: options.get<number>('connectionTimeout'),
     });
-    pgNamed.patch(this.db);
   }
 
   query<T>(query: string, mapper: ClassConstructor<T>, params?: { [key: string]: any }): Promise<T[]> {
@@ -61,7 +62,6 @@ export class Db {
     query: <T>(query: string, mapper: ClassConstructor<T>, params?: { [p: string]: any }) => Promise<T[]>;
     bulkInsert: <T>(query: string, mapper: ClassConstructor<T>, params?: any[]) => Promise<T[]> }) => Promise<any>) {
     const client = await this.db.connect();
-    pgNamed.patch(client);
 
     try {
       await client.query('BEGIN');
@@ -82,5 +82,9 @@ export class Db {
     } finally {
       client.release();
     }
+  }
+
+  async close() {
+    await this.db.end();
   }
 }
